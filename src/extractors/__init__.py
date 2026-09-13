@@ -2,13 +2,12 @@
 Package extractors
 """
 
-from .JBIG2 import JBIG2FeatureExtractor, JBIG2Descriptor
-
-from .MPEG7 import MPEG7FeatureExtractor, MPEG7Descriptor
+from .doc_extractor import DocFeatureExtractor, DocDescriptor
+from .photo_extractor import PhotoFeatureExtractor, PhotoDescriptor
 
 __all__ = [
-    "JBIG2FeatureExtractor", 
-    "JBIG2Descriptor",
-    "MPEG7FeatureExtractor", 
-    "MPEG7Descriptor"
+    "DocFeatureExtractor", 
+    "DocDescriptor",
+    "PhotoFeatureExtractor", 
+    "PhotoDescriptor"
 ]
