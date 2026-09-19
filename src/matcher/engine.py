@@ -6,7 +6,7 @@ Corso: Trattamento Dati Multimediali (TDM)
 """
 
 from dataclasses import dataclass
-from typing import List, Dict, Any, Set
+from typing import List, Dict, Any, Set, Tuple
 import numpy as np
 
 from ..classifier.enums import ImageType

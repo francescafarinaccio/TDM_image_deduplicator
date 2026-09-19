@@ -2,18 +2,19 @@
 Modulo: scanner.py
 Descrizione: Servizio di scansione ricorsiva del filesystem,
              estrazione EXIF e calcolo dello Quality Score.
+Corso: Trattamento Dati Multimediali (TDM)
 """
 
 import os
 import math
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
 import numpy as np
 import cv2
 from PIL import Image, ExifTags
-
 from .metadata import ImageMetadata
 
+DEFAULT_DATASET_DIR = "./dataset"
 
 class ImageScanner:
     """
@@ -23,19 +24,58 @@ class ImageScanner:
     
     SUPPORTED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp'}
 
-    def __init__(self, w_res: float = 0.35, w_size: float = 0.20, w_blur: float = 0.45):
+    def __init__(
+        self, 
+        target_dir: str = DEFAULT_DATASET_DIR, 
+        w_res: float = 0.35, 
+        w_size: float = 0.20, 
+        w_blur: float = 0.45
+    ):
+        """
+        :param target_dir: Directory statica di default per la scansione.
+        :param w_res: Peso risoluzione/megapixel nel Quality Score.
+        :param w_size: Peso dimensione file nel Quality Score.
+        :param w_blur: Peso nitidezza/blur nel Quality Score.
+        """
+        self.target_dir = Path(target_dir)
         self.w_res = w_res
         self.w_size = w_size
         self.w_blur = w_blur
 
-    def scan_directory(self, root_dir: str) -> List[ImageMetadata]:
+    def scan(self, root_dir: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Metodo di scansione principale richiamato da main.py.
+        Restituisce una lista di dizionari con filepath, quality_score e metadati completi.
+        """
+        path_to_scan = root_dir if root_dir else str(self.target_dir)
+        metadata_objects = self.scan_directory(path_to_scan)
+
+        # Convertiamo gli oggetti ImageMetadata in dizionari per compatibilità con la pipeline
+        results: List[Dict[str, Any]] = []
+        for meta in metadata_objects:
+            results.append({
+                "filepath": meta.filepath,
+                "quality_score": meta.quality_score,
+                "filename": meta.filename,
+                "megapixels": meta.megapixels,
+                "file_size_bytes": meta.file_size_bytes,
+                "blur_score": meta.blur_score,
+                "metadata_obj": meta
+            })
+
+        return results
+
+    def scan_directory(self, root_dir: Optional[str] = None) -> List[ImageMetadata]:
         """Scansiona ricorsivamente la directory target e restituisce la lista di ImageMetadata."""
-        path_obj = Path(root_dir)
-        if not path_obj.exists() or not path_obj.is_dir():
-            raise ValueError(f"Directory non valida: {root_dir}")
+        target_path = Path(root_dir) if root_dir else self.target_dir
+
+        if not target_path.exists():
+            print(f"[!] La directory '{target_path}' non esiste. Creazione automatica in corso...")
+            target_path.mkdir(parents=True, exist_ok=True)
+            return []
 
         results: List[ImageMetadata] = []
-        for file_path in path_obj.rglob('*'):
+        for file_path in target_path.rglob('*'):
             if file_path.is_file() and file_path.suffix.lower() in self.SUPPORTED_EXTENSIONS:
                 try:
                     meta = self.process_image(str(file_path))
@@ -99,7 +139,6 @@ class ImageScanner:
             quality_score=quality_score
         )
 
-    #funzione per calcorlare la varianza del Laplaciano e del gradiente di Sobel che indicano la nitidezza dell'immagine
     def _compute_sharpness_scores(self, filepath: str) -> Tuple[float, float]: 
         """Calcola la varianza del Laplaciano e del gradiente di Sobel."""
         img_gray = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
@@ -114,9 +153,8 @@ class ImageScanner:
 
         return round(laplacian_var, 2), round(sobel_var, 2)
 
-    #funzione per calcolare lo score composito logaritmico basato su megapixel, dimensione del file e nitidezza
     def _compute_quality_score(self, megapixels: float, file_size_bytes: int, blur_score: float) -> float:
-        """Calcola lo score logaritmico composito."""
+        """Calcola lo score logaritmico composito basato su risoluzione, peso file e nitidezza."""
         norm_res = math.log10(megapixels * 1e6 + 1.0)
         norm_size = math.log10(file_size_bytes + 1.0)
         norm_blur = math.log10(blur_score + 1.0)

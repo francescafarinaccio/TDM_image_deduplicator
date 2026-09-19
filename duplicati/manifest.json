@@ -1,0 +1,23 @@
+{
+    "timestamp": "2026-09-19T17:58:44.363832",
+    "total_clusters": 1,
+    "total_isolated_files": 1,
+    "isolation_directory": "D:\\Progetti\\TDM_image_deduplicator\\duplicati",
+    "clusters": [
+        {
+            "cluster_id": 1,
+            "image_type": "PHOTO",
+            "master_file": "D:\\Progetti\\TDM_image_deduplicator\\dataset\\photo_5778200489395687119_y.jpg",
+            "isolated_files": [
+                {
+                    "original_path": "D:\\Progetti\\TDM_image_deduplicator\\dataset\\testimage.jpg",
+                    "quarantine_path": "D:\\Progetti\\TDM_image_deduplicator\\duplicati\\c1_testimage.jpg",
+                    "similarity_to_master": 1.0
+                }
+            ]
+        }
+    ],
+    "rollback_map": {
+        "duplicati\\c1_testimage.jpg": "D:\\Progetti\\TDM_image_deduplicator\\dataset\\testimage.jpg"
+    }
+}

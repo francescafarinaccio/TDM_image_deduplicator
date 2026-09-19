@@ -1,40 +1,38 @@
 """
-Main entrypoint per l'esecuzione della pipeline completa di deduplicazione.
+Main entrypoint per l'esecuzione della pipeline unificata di deduplicazione.
+Corso: Trattamento Dati Multimediali (TDM)
 """
 
-import argparse
-import sys
 from pathlib import Path
 
-# Consente l'esecuzione dello script anche quando la working directory non è
-# la radice del progetto.
-PROJECT_ROOT = Path(__file__).resolve().parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from src.scanner.scanner import ImageScanner
+from src.ingestion.scanner import ImageScanner
 from src.classifier.regioner import ImageClassifier
 from src.matcher.engine import DeduplicationEngine
 from src.safe_ops.isolation import IsolationManager
 
 
-def run_pipeline(dataset_dir: str, isolation_dir: str):
+DATASET_DIR = "./dataset"      # Cartella di input contenente le immagini
+DUPLICATES_DIR = "./duplicati"  # Cartella target per l'isolamento dei duplicati
+
+
+
+def run_pipeline():
     print("=" * 60)
     print(" PIPELINE DI DEDUPLICAZIONE IMMAGINI (TDM)")
     print("=" * 60)
 
-    # 1. Scansione ed estrazione qualita'
-    print(f"\n[1/4] Scansione directory: {dataset_dir}")
-    scanner = ImageScanner(target_dir=dataset_dir)
+    # 1. Scansione ed estrazione metadati / quality score logaritmico
+    print(f"\n[1/4] Scansione directory statica: {DATASET_DIR}")
+    scanner = ImageScanner(target_dir=DATASET_DIR)
     scanned_files = scanner.scan()
     print(f" -> Trovate {len(scanned_files)} immagini valide.")
 
     if len(scanned_files) < 2:
-        print(" -> File insufficienti per eseguire la deduplicazione.")
+        print(" -> File insufficienti per la deduplicazione. Inserisci almeno 2 immagini in ./dataset")
         return
 
-    # 2. Classificazione JBIG2 Regioning
-    print("\n[2/4] Classificazione delle regioni (DOC vs PHOTO)...")
+    # 2. Classificazione JBIG2 Regioning (DOC vs PHOTO)
+    print("\n[2/4] Classificazione contenuto (DOC vs PHOTO)...")
     classifier = ImageClassifier()
     processed_records = []
 
@@ -46,9 +44,9 @@ def run_pipeline(dataset_dir: str, isolation_dir: str):
             "image_type": image_type,
             "metrics": metrics
         })
-        print(f" -> {Path(item['filepath']).name}: {image_type.value} (Quality: {item['quality_score']:.2f})")
+        print(f" -> {Path(item['filepath']).name}: {image_type.value} (Quality Score: {item['quality_score']:.2f})")
 
-    # 3. Matching e Clustering
+    # 3. Matching e Clustering (HOG + HSV 3D per foto, ORB + Layout per doc)
     print("\n[3/4] Calcolo similarita' e ricerca duplicati...")
     engine = DeduplicationEngine(doc_threshold=0.70, photo_threshold=0.75)
     clusters = engine.find_duplicates(processed_records)
@@ -57,8 +55,8 @@ def run_pipeline(dataset_dir: str, isolation_dir: str):
 
     # 4. Isolamento nella cartella 'duplicati'
     if clusters:
-        print(f"\n[4/4] Spostamento duplicati nella cartella '{isolation_dir}'...")
-        iso_manager = IsolationManager(target_folder=isolation_dir)
+        print(f"\n[4/4] Spostamento duplicati nella cartella target '{DUPLICATES_DIR}'...")
+        iso_manager = IsolationManager(target_folder=DUPLICATES_DIR)
         manifest_path = iso_manager.isolate_duplicates(clusters)
         
         for c in clusters:
@@ -66,29 +64,12 @@ def run_pipeline(dataset_dir: str, isolation_dir: str):
             print(f"   MASTER (conservato): {Path(c.master_file).name}")
             for dup in c.duplicate_files:
                 score = c.similarity_scores.get(dup, 0.0)
-                print(f"   -> SPOSTATO: {Path(dup).name} (Similarita': {score:.2%})")
+                print(f"   -> SPOSTATO IN DUPLICATI: {Path(dup).name} (Similarita': {score:.2%})")
 
         print(f"\n Operazione completata. Manifest salvato in: {manifest_path}")
     else:
-        print("\n[4/4] Nessun duplicato da isolare.")
-
-
-def run_rollback(manifest_path: str):
-    print(f"Ripristino in corso da manifest: {manifest_path}")
-    iso_manager = IsolationManager()
-    restored = iso_manager.rollback(manifest_path)
-    print(f" Operazione completata: {restored} file ripristinati nella posizione originale.")
+        print("\n[4/4] Nessun duplicato trovato da isolare.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Pipeline TDM per Deduplicazione Immagini")
-    parser.add_argument("--dataset", type=str, default="./dataset", help="Directory contenente le immagini")
-    parser.add_argument("--output", type=str, default="duplicati", help="Cartella per i duplicati isolati")
-    parser.add_argument("--rollback", type=str, default=None, help="Percorso al file manifest.json per annulare lo spostamento")
-
-    args = parser.parse_args()
-
-    if args.rollback:
-        run_rollback(args.rollback)
-    else:
-        run_pipeline(args.dataset, args.output)
+    run_pipeline()
