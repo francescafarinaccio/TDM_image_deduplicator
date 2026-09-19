@@ -3,7 +3,14 @@ Main entrypoint per l'esecuzione della pipeline completa di deduplicazione.
 """
 
 import argparse
+import sys
 from pathlib import Path
+
+# Consente l'esecuzione dello script anche quando la working directory non è
+# la radice del progetto.
+PROJECT_ROOT = Path(__file__).resolve().parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.scanner.scanner import ImageScanner
 from src.classifier.regioner import ImageClassifier
