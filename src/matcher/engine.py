@@ -1,9 +1,4 @@
-"""
-Modulo: engine.py
-Descrizione: Engine di matching e clustering per l'individuazione di immagini
-             duplicate o quasi-duplicate e la selezione del file Master.
-Corso: Trattamento Dati Multimediali (TDM)
-"""
+# Engine di matching e clustering per l'individuazione di immagini duplicate o quasi-duplicate e la selezione del file Master.
 
 from dataclasses import dataclass
 from typing import List, Dict, Any, Set, Tuple
@@ -14,21 +9,17 @@ from ..extractors.doc_extractor import DocFeatureExtractor
 from ..extractors.photo_extractor import PhotoFeatureExtractor
 
 
+#rappresenta un gruppo di immagini duplicate identificate
 @dataclass
 class DuplicateCluster:
-    """Rappresenta un gruppo di immagini duplicate identificate."""
     cluster_id: int
     image_type: ImageType
     master_file: str
     duplicate_files: List[str]
     similarity_scores: Dict[str, float]  # Similarità rispetto al file master
 
-
+# Engine di deduplicazione che gestisce la logica di matching e clustering
 class DeduplicationEngine:
-    """
-    Engine principale per il calcolo delle matrici di similarità
-    e la generazione dei cluster di duplicati.
-    """
 
     def __init__(self, doc_threshold: float = 0.70, photo_threshold: float = 0.75):
         """
@@ -41,10 +32,9 @@ class DeduplicationEngine:
         self.doc_extractor = DocFeatureExtractor()
         self.photo_extractor = PhotoFeatureExtractor()
 
+    #elabora i record prodotti da scanner.py e regioner.py e restituisce i cluster di duplicati.
     def find_duplicates(self, scanned_records: List[Dict[str, Any]]) -> List[DuplicateCluster]:
-        """
-        Elabora i record prodotti da scanner.py e regioner.py e restituisce i cluster di duplicati.
-        
+        """        
         :param scanned_records: Lista di dizionari contenenti 'filepath', 'quality_score', 'image_type'.
         :return: Lista di oggetti DuplicateCluster.
         """
@@ -69,6 +59,8 @@ class DeduplicationEngine:
 
         return clusters
 
+    
+    #funzione interna per processare una categoria di immagini (Documenti o Fotografie)
     def _process_category(
         self,
         records: List[Dict[str, Any]],
@@ -77,7 +69,7 @@ class DeduplicationEngine:
         image_type: ImageType,
         start_cluster_id: int
     ) -> Tuple[List[DuplicateCluster], int]:
-        """Esegue estrazione feature, calcolo matrice e clustering a componenti connesse."""
+        # Esegue estrazione feature, calcolo matrice e clustering a componenti connesse.
         if len(records) < 2:
             return [], start_cluster_id
 
@@ -92,6 +84,8 @@ class DeduplicationEngine:
         sim_matrix = np.zeros((n, n), dtype=np.float32)
 
         # Calcolo pairwise della matrice di similarità
+        #generazione delle coppie di immagini e calcolo della similarità
+        #per ogni coppia invoca l'algoritmo di estrazione delle feature e calcola la similarità
         for i in range(n):
             adj_matrix[i, i] = True
             sim_matrix[i, i] = 1.0
@@ -105,6 +99,7 @@ class DeduplicationEngine:
                     adj_matrix[j, i] = True
 
         # Algoritmo Graph-based: ricerca delle componenti connesse
+        #popolamento del grafo 
         visited: Set[int] = set()
         clusters: List[DuplicateCluster] = []
         current_cluster_id = start_cluster_id
@@ -113,6 +108,7 @@ class DeduplicationEngine:
             if i in visited:
                 continue
 
+            #confronta tutte le coppie , esegue una ricerca in ampiezza sul grafo per isolare le componenti connesse
             # Breadth-First Search (BFS) per trovare tutti gli elementi connessi
             component: List[int] = []
             queue = [i]

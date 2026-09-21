@@ -1,10 +1,5 @@
-"""
-Modulo: regioner.py
-Descrizione: Classificatore di contenuto basato sui principi di segmentazione di regione
-             dello standard JBIG2 (Binarizzazione di Otsu, Analisi di Bimodalia e
-             Densità dei Componenti Connessi).
-Corso: Trattamento Dati Multimediali (TDM)
-"""
+ #Classificatore di contenuto basato sui principi di segmentazione di regione dello standard JBIG2 e MPEG-7. Distinzione tra Documenti/Grafica e Fotografie/Scene naturali.
+
 
 from pathlib import Path
 from typing import Tuple, Dict, Any
@@ -15,10 +10,6 @@ from .enums import ImageType
 
 
 class ImageClassifier:
-    """
-    Classificatore di regione che distingue tra Documenti/Grafica (JBIG2)
-    e Fotografie/Scene naturali (MPEG-7).
-    """
 
     def __init__(
         self,
@@ -35,11 +26,9 @@ class ImageClassifier:
         self.otsu_separability_threshold = otsu_separability_threshold
         self.min_symbol_density, self.max_symbol_density = symbol_density_range
 
+    #funzione principale di classificazione, richiamata da scanner.py
     def classify(self, filepath: str) -> Tuple[ImageType, Dict[str, Any]]:
         """
-        Analizza l'immagine e restituisce la classe di appartenenza insieme
-        alle metriche calcolate.
-        
         :param filepath: Percorso completo dell'immagine
         :return: Tupla (ImageType.DOCUMENT | ImageType.PHOTO, dizionario_metriche)
         """
@@ -61,6 +50,8 @@ class ImageClassifier:
         binary_img, otsu_score = self._compute_otsu_separability(img_gray)
 
         # 4. Analisi dei Componenti Connessi (JBIG2 Symbol Extracting)
+        #JBIG2 deriva dallo standard di compressione per immagini binarie e decompone una pagine
+        #in regioni omogenee in base al contenuto
         symbol_density, avg_aspect_ratio = self._analyze_connected_components(binary_img, total_pixels)
 
         # 5. Albero Decisionale per la Classificazione
@@ -83,7 +74,6 @@ class ImageClassifier:
         return classified_type, metrics
 
     def _analyze_color_diversity(self, img_bgr: np.ndarray, total_pixels: int) -> Tuple[float, float]:
-        """Calcola la varianza dei colori e la saturazione media nello spazio HSV."""
         # Convertiamo in HSV per misurare la saturazione media
         img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
         avg_saturation = float(np.mean(img_hsv[:, :, 1]))
@@ -96,11 +86,9 @@ class ImageClassifier:
 
         return unique_ratio, avg_saturation
 
+    #funzione che calcola la soglia ottima di Otsu e la misura di separabilità delle classi dell'istogramma
     def _compute_otsu_separability(self, img_gray: np.ndarray) -> Tuple[np.ndarray, float]:
-        """
-        Calcola la soglia ottima di Binarizzazione di Otsu e la misura di
-        separabilità delle classi dell'istogramma: $\eta = \frac{\sigma^2_B}{\sigma^2_T}$
-        """
+       
         # Calcolo istogramma
         hist = cv2.calcHist([img_gray], [0], None, [256], [0, 256]).ravel()
         hist_norm = hist / float(hist.sum())
@@ -133,10 +121,11 @@ class ImageClassifier:
         return binary_img, separability_score
 
     def _analyze_connected_components(self, binary_img: np.ndarray, total_pixels: int) -> Tuple[float, float]:
-        """
-        Analizza la densità dei componenti connessi (simboli/caratteri) 
-        modellando il comportamento del Symbol Dictionary di JBIG2.
-        """
+      
+        #L'algoritmo analizza l'immagine binarizzata isolando le componenti connesse, ovvero i singoli gruppi di pixel neri adiacenti
+        #densità: nm di oggetti distinti / area totale dell'immagine
+        #avg aspect ratio: rapporto medio tra larghezza e altezza dei bounding box dei componenti connessi (i caratteri hanno tanti piccoli BB)
+
         num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary_img)
 
         valid_symbols = 0

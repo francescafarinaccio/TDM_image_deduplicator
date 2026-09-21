@@ -1,6 +1,3 @@
-"""
-Package safe_ops
-"""
 
 from .isolation import IsolationManager
 

@@ -1,10 +1,7 @@
-"""
-Main entrypoint per l'esecuzione della pipeline unificata di deduplicazione.
-Corso: Trattamento Dati Multimediali (TDM)
-"""
+
+# Main entrypoint per l'esecuzione della pipeline unificata di deduplicazione.
 
 from pathlib import Path
-
 from src.ingestion.scanner import ImageScanner
 from src.classifier.regioner import ImageClassifier
 from src.matcher.engine import DeduplicationEngine
@@ -13,7 +10,6 @@ from src.safe_ops.isolation import IsolationManager
 
 DATASET_DIR = "./dataset"      # Cartella di input contenente le immagini
 DUPLICATES_DIR = "./duplicati"  # Cartella target per l'isolamento dei duplicati
-
 
 
 def run_pipeline():

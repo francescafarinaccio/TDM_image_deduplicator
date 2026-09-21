@@ -25,6 +25,9 @@ class DocFeatureExtractor:
     Estrattore nativo per documenti basato su ORB (OpenCV) e Profili di Proiezione.
     """
 
+    #ORB: Oriented FAST and Rotated BRIEF, algoritmo di estrazione di keypoint e descrittori binari.
+    #I punti di interesse angolari (ORB) catturano la forma dei singoli caratteri, rendendo il colore del tutto secondario
+
     def __init__(self, max_features: int = 500, match_threshold: float = 0.75):
         """
         :param max_features: Numero massimo di keypoint ORB da estrarre per pagina.
@@ -38,6 +41,10 @@ class DocFeatureExtractor:
 
     def extract(self, filepath: str) -> DocDescriptor:
         """Estrae i descrittori ORB e i profili di proiezione dal documento."""
+
+        # Legge l'immagine in scala di grigi (documenti tipicamente monocromatici)
+        #ORB utilizza FAST come rilevatore di keypoint e BRIEF come descrittore, ovvero calcola l'orientamento dei keypoint e genera un descrittore binario per ciascun keypoint rilevato.
+
         img_gray = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
         if img_gray is None:
             return DocDescriptor(filepath, None, np.zeros(0), np.zeros(0))
@@ -66,6 +73,12 @@ class DocFeatureExtractor:
             proj_v=proj_v,
             proj_h=proj_h
         )
+
+
+    #per confrontare due documenti, si calcola la similarità tra i descrittori ORB e i profili di proiezione, combinando i punteggi in un unico valore di similarità.
+    #sommo i pixel dell'imm binarizzata lungo le righe e le colonne per ottenere due profili di proiezione, che rappresentano la distribuzione del testo nel documento e li trasfmoro in vettori normalizzati. La similarità tra due documenti viene calcolata come media pesata della similarità dei profili di proiezione e della corrispondenza dei keypoint ORB.
+    #confronto poi i vettori con la similarità coseno 
+    
 
     def compute_similarity(self, desc1: DocDescriptor, desc2: DocDescriptor) -> float:
         """

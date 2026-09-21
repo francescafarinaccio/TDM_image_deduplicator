@@ -1,9 +1,5 @@
-"""
-Modulo: photo_extractor.py
-Descrizione: Estrattore di feature per immagini naturali basato su metodi nativi 
-             HOG (scikit-image) e Istogramma cromatico 3D HSV (OpenCV).
-Corso: Trattamento Dati Multimediali (TDM)
-"""
+
+#Estrattore di feature per immagini naturali basato su metodi nativi HOG (scikit-image) e Istogramma cromatico 3D HSV (OpenCV).
 
 from dataclasses import dataclass
 from typing import Tuple
@@ -12,18 +8,16 @@ import cv2
 from skimage.feature import hog
 
 
+#dataclass per rappresentare i descrittori estratti da un'immagine fotografica
 @dataclass
 class PhotoDescriptor:
-    """Rappresentazione dei vettori HOG e dell'istogramma HSV 3D."""
     filepath: str
     hsv_hist: np.ndarray   # Istogramma 3D appiattito (8x8x8 = 512 bin)
     hog_vec: np.ndarray    # Vettore dei gradienti orientati (HOG)
 
 
+#estrattore di feature per immagini naturali basato su HOG e Istogramma HSV
 class PhotoFeatureExtractor:
-    """
-    Estrattore nativo basato su HOG e Istogrammi HSV 3D.
-    """
 
     def __init__(self, hsv_bins: Tuple[int, int, int] = (8, 8, 8), w_hsv: float = 0.5, w_hog: float = 0.5):
         """
@@ -35,8 +29,8 @@ class PhotoFeatureExtractor:
         self.w_hsv = w_hsv
         self.w_hog = w_hog
 
+    #funzione principale per estrarre i descrittori da un'immagine
     def extract(self, filepath: str) -> PhotoDescriptor:
-        """Estrae i descrittori HSV 3D ed HOG dal file immagine."""
         img_bgr = cv2.imread(filepath)
         if img_bgr is None:
             total_bins = self.hsv_bins[0] * self.hsv_bins[1] * self.hsv_bins[2]
@@ -46,8 +40,19 @@ class PhotoFeatureExtractor:
                 hog_vec=np.zeros(0, dtype=np.float32)
             )
 
+
+        #a differenza di RGB, lo spazio colore HSV separa la cromaticità dalla luminosità, rendendo l'istogramma più robusto a variazioni di illuminazione
+        #lo spazio colore viene discretizzato in un num fisso di bin per ogni canale (Hue, Saturation, Value), creando un istogramma 3D che rappresenta la distribuzione dei colori nell'immagine.
+        #il confronto tra istogrammi 3D di immagini diverse può essere effettuato tramite la distanza di Bhattacharyya, che misura la similarità tra due distribuzioni di probabilità.
+    
         # 1. Istogramma HSV 3D (OpenCV)
         hsv_hist = self._extract_hsv_hist(img_bgr)
+
+
+        #l'img viene divisa in una griglia di celle, e per ogni cella viene calcolato un istogramma dei gradienti orientati (HOG), che cattura la struttura locale dell'immagine.
+        #per ciascun pixel si calcola il gradiente 
+        # in ogni cella si costruisce un istogramma che raggruppa le direzioni dei gradienti 
+        # tutti gli istogrammi delle celle vengono normalizzati e concatenati per formare un vettore HOG globale che rappresenta la struttura dell'immagine.        
 
         # 2. HOG (Scikit-Image)
         hog_vec = self._extract_hog(img_bgr)
@@ -58,8 +63,9 @@ class PhotoFeatureExtractor:
             hog_vec=hog_vec
         )
 
+    #calcola l'istogramma 3D HSV e lo normalizza
     def _extract_hsv_hist(self, img_bgr: np.ndarray) -> np.ndarray:
-        """Calcola l'istogramma 3D nello spazio colore HSV e lo normalizza L1."""
+   
         img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
         
         # H in [0, 180], S in [0, 256], V in [0, 256]
@@ -75,8 +81,8 @@ class PhotoFeatureExtractor:
         cv2.normalize(hist, hist, alpha=1.0, beta=0.0, norm_type=cv2.NORM_L1)
         return hist.astype(np.float32).flatten()
 
+    #calcola il vettore HOG dell'immagine ridimensionata e in scala di grigi
     def _extract_hog(self, img_bgr: np.ndarray) -> np.ndarray:
-        """Ridimensiona l'immagine e calcola il vettore HOG nativo."""
         # Ridimensionamento standard per uniformare la dimensione del vettore HOG finale
         resized = cv2.resize(img_bgr, (128, 128), interpolation=cv2.INTER_AREA)
         gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
@@ -91,12 +97,9 @@ class PhotoFeatureExtractor:
         )
         return hog_vec.astype(np.float32)
 
+    #calcola la similarità composita tra due descrittori di immagini naturali, combinando la similarità cromatica HSV e la similarità strutturale HOG in un unico punteggio.
     def compute_similarity(self, desc1: PhotoDescriptor, desc2: PhotoDescriptor) -> float:
-        """
-        Calcola la similarità composita tra due descrittori.
-        
-        :return: Punteggio tra 0.0 (completamente diverse) e 1.0 (duplicato visivo).
-        """
+       
         if desc1.hsv_hist.size == 0 or desc2.hsv_hist.size == 0:
             return 0.0
 

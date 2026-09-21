@@ -1,6 +1,3 @@
-"""
-Package matcher
-"""
 
 from .engine import DeduplicationEngine, DuplicateCluster
 

@@ -1,9 +1,5 @@
-"""
-Modulo: scanner.py
-Descrizione: Servizio di scansione ricorsiva del filesystem,
-             estrazione EXIF e calcolo dello Quality Score.
-Corso: Trattamento Dati Multimediali (TDM)
-"""
+
+#Servizio di scansione ricorsiva del filesystem,estrazione EXIF e calcolo dello Quality Score.
 
 import os
 import math
@@ -17,10 +13,6 @@ from .metadata import ImageMetadata
 DEFAULT_DATASET_DIR = "./dataset"
 
 class ImageScanner:
-    """
-    Classe di servizio responsabile dell'esplorazione del file system,
-    estrazione metadati e valutazione della qualità delle immagini.
-    """
     
     SUPPORTED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp'}
 
@@ -42,11 +34,9 @@ class ImageScanner:
         self.w_size = w_size
         self.w_blur = w_blur
 
+    #funzione principale di scansione, richiamata da main.py. Restituisce una lista di dizionari con filepath, quality_score e metadati completi.
     def scan(self, root_dir: Optional[str] = None) -> List[Dict[str, Any]]:
-        """
-        Metodo di scansione principale richiamato da main.py.
-        Restituisce una lista di dizionari con filepath, quality_score e metadati completi.
-        """
+     
         path_to_scan = root_dir if root_dir else str(self.target_dir)
         metadata_objects = self.scan_directory(path_to_scan)
 
@@ -65,8 +55,9 @@ class ImageScanner:
 
         return results
 
+    #funzione che scansiona la directory e restituisce una lista di oggetti ImageMetadata
     def scan_directory(self, root_dir: Optional[str] = None) -> List[ImageMetadata]:
-        """Scansiona ricorsivamente la directory target e restituisce la lista di ImageMetadata."""
+
         target_path = Path(root_dir) if root_dir else self.target_dir
 
         if not target_path.exists():
@@ -86,6 +77,7 @@ class ImageScanner:
                     
         return results
 
+    #funzione che elabora un singolo file e restituisce un oggetto ImageMetadata
     def process_image(self, filepath: str) -> Optional[ImageMetadata]:
         """Elabora un singolo file e istanzia un oggetto ImageMetadata."""
         p = Path(filepath)
@@ -139,8 +131,10 @@ class ImageScanner:
             quality_score=quality_score
         )
 
+    #funzione che calcola i punteggi di nitidezza utilizzando Laplaciano e Sobel
+    #filtro di Sobel per riconoscere i contorni e il filtro Laplaciano per la nitidezza
     def _compute_sharpness_scores(self, filepath: str) -> Tuple[float, float]: 
-        """Calcola la varianza del Laplaciano e del gradiente di Sobel."""
+
         img_gray = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
         if img_gray is None:
             return 0.0, 0.0
@@ -153,8 +147,9 @@ class ImageScanner:
 
         return round(laplacian_var, 2), round(sobel_var, 2)
 
+    #funzione che calcola lo score di qualità composito basato su risoluzione, dimensione file e nitidezza
+    #applico una normalizzazione logaritmica per evitare che valori estremi influenzino troppo il punteggio finale
     def _compute_quality_score(self, megapixels: float, file_size_bytes: int, blur_score: float) -> float:
-        """Calcola lo score logaritmico composito basato su risoluzione, peso file e nitidezza."""
         norm_res = math.log10(megapixels * 1e6 + 1.0)
         norm_size = math.log10(file_size_bytes + 1.0)
         norm_blur = math.log10(blur_score + 1.0)

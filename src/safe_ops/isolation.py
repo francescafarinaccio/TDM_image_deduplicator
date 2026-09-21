@@ -1,9 +1,5 @@
-"""
-Modulo: isolation.py
-Descrizione: Gestione dell'isolamento dei file duplicati nella cartella 'duplicati',
-             generazione del file manifest.json e procedura di rollback.
-Corso: Trattamento Dati Multimediali (TDM)
-"""
+# Gestione dell'isolamento dei file duplicati nella cartella 'duplicati', generazione del file manifest.json e procedura di rollback.
+
 
 from datetime import datetime
 from pathlib import Path
@@ -14,25 +10,18 @@ import shutil
 from ..matcher.engine import DuplicateCluster
 
 
+# classe che gestisce lo spostamento sicuro dei file duplicati e il loro ripristino
 class IsolationManager:
-    """
-    Gestisce lo spostamento sicuro dei file duplicati e il loro ripristino.
-    """
+   
 
     def __init__(self, target_folder: str = "duplicati"):
-        """
-        :param target_folder: Percorso della cartella di destinazione per i duplicati.
-        """
+       #percorso assoluto della cartella di destinazione per i duplicati
         self.target_dir = Path(target_folder)
 
+
+    #sposta i file duplicati nella cartella target e genera il file manifest.json
     def isolate_duplicates(self, clusters: List[DuplicateCluster]) -> Path:
-        """
-        Sposta tutti i file duplicati identificati nella cartella 'duplicati'
-        e genera il file manifest.json.
-        
-        :param clusters: Lista di DuplicateCluster generata da DeduplicationEngine.
-        :return: Percorso completo al file manifest.json generato.
-        """
+      
         if not self.target_dir.exists():
             self.target_dir.mkdir(parents=True, exist_ok=True)
 
@@ -85,14 +74,9 @@ class IsolationManager:
 
         return manifest_path
 
+    #ripristina i file spostati nella cartella 'duplicati' alle loro posizioni originali leggendo il file manifest.json
     def rollback(self, manifest_path: str) -> int:
-        """
-        Ripristina tutti i file spostati nella cartella 'duplicati' riportandoli
-        alle loro posizioni originali leggendo il file manifest.json.
         
-        :param manifest_path: Percorso al file manifest.json.
-        :return: Numero di file ripristinati con successo.
-        """
         manifest_file = Path(manifest_path)
         if not manifest_file.exists():
             raise FileNotFoundError(f"File manifest non trovato: {manifest_path}")

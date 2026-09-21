@@ -1,6 +1,4 @@
-"""
-Package ingestion
-"""
+
 
 from .metadata import ImageMetadata
 from .scanner import ImageScanner

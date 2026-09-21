@@ -1,6 +1,3 @@
-"""
-Package classifier
-"""
 
 from .enums import ImageType
 from .regioner import ImageClassifier 
